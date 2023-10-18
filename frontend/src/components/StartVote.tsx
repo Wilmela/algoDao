@@ -2,6 +2,8 @@
 import { ReactNode, useState } from 'react'
 import { Start, StartClient } from '../contracts/StartClient'
 import { useWallet } from '@txnlab/use-wallet'
+import algosdk from 'algosdk';
+import * as algokit from '@algorandfoundation/algokit-utils';
 
 /* Example usage
 <StartVote
@@ -13,7 +15,7 @@ import { useWallet } from '@txnlab/use-wallet'
   registeredASA={registeredASA}
 />
 */
-type StartVoteArgs = Start['methods']['vote(bool,asset)void']['argsObj']
+type StartVoteArgs = Start['methods']['vote(pay,bool,asset)void']['argsObj']
 
 type Props = {
   buttonClass: string
@@ -23,22 +25,35 @@ type Props = {
   inFavor: StartVoteArgs['inFavor']
   registeredASA: StartVoteArgs['registeredASA']
   getState: () => Promise<void>
+  algodClient: algosdk.Algodv2,
 }
 
 const StartVote = (props: Props) => {
   const [loading, setLoading] = useState<boolean>(false)
-  const { activeAddress, signer } = useWallet()
+  const { activeAddress, signer } = useWallet();
+  const sender = { signer, addr: activeAddress! };
 
   const callMethod = async () => {
     setLoading(true)
     console.log(`Calling vote`)
+    const { appAddress } = await props.typedClient.appClient.getAppReference();
+
+    const boxMBRPayment = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+      from: sender.addr,
+      to: appAddress,
+      amount: 15_700,
+      suggestedParams: await algokit.getTransactionParams(undefined, props.algodClient),
+    });
+
     await props.typedClient.vote(
       {
+        boxMBRPayment,
         inFavor: props.inFavor,
         registeredASA: props.registeredASA,
       },
       {
-        sender: { signer, addr: activeAddress! },
+        sender,
+        boxes: [algosdk.decodeAddress(sender.addr).publicKey],
       },
     )
     await props.getState()

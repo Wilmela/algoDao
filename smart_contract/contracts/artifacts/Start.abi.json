@@ -42,11 +42,17 @@
       }
     },
     {
-      "name": "getRegisteredASA",
-      "args": [],
+      "name": "deregister",
+      "args": [
+        {
+          "name": "registeredASA",
+          "type": "asset",
+          "desc": ""
+        }
+      ],
       "desc": "",
       "returns": {
-        "type": "uint64",
+        "type": "void",
         "desc": ""
       }
     },
@@ -76,17 +82,11 @@
       }
     },
     {
-      "name": "deregister",
-      "args": [
-        {
-          "name": "registeredASA",
-          "type": "asset",
-          "desc": ""
-        }
-      ],
+      "name": "getRegisteredASA",
+      "args": [],
       "desc": "",
       "returns": {
-        "type": "void",
+        "type": "uint64",
         "desc": ""
       }
     },

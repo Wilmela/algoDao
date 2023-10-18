@@ -231,25 +231,152 @@ register:
 	itxn_submit
 	retsub
 
-// getRegisteredASA()uint64
-abi_route_getRegisteredASA:
-	// execute getRegisteredASA()uint64
-	callsub getRegisteredASA
+// deregister(asset)void
+//
+// // eslint-disable-next-line no-unused-vars
+abi_route_deregister:
+	byte 0x // push empty bytes to fill the stack frame for this subroutine's local variables
+
+	// registeredASA: asset
+	txna ApplicationArgs 1
+	btoi
+	txnas Assets
+
+	// execute deregister(asset)void
+	callsub deregister
 	int 1
 	return
 
-getRegisteredASA:
-	proto 0 0
+deregister:
+	proto 2 0
 
-	// contracts/start.algo.ts:55
-	// return this.registeredAsaId.value;
+	// if0_condition
+	// contracts/start.algo.ts:58
+	// this.inFavor(this.txn.sender).exists
+	txn Sender
+	box_len
+	swap
+	pop
+	bz if0_end
+
+	// if0_consequent
+	// contracts/start.algo.ts:59
+	// this.votesTotal.value = this.votesTotal.value - 1
+	byte "votesTotal"
+	byte "votesTotal"
+	app_global_get
+	int 1
+	-
+	app_global_put
+
+	// if1_condition
+	// contracts/start.algo.ts:60
+	// this.inFavor(this.txn.sender).value
+	txn Sender
+	box_get
+	assert
+	int 0
+	getbit
+	bz if1_end
+
+	// if1_consequent
+	// contracts/start.algo.ts:61
+	// this.votesInFavor.value = this.votesInFavor.value - 1
+	byte "votesInFavor"
+	byte "votesInFavor"
+	app_global_get
+	int 1
+	-
+	app_global_put
+
+if1_end:
+	// contracts/start.algo.ts:64
+	// preMBR = this.app.address.minBalance
+	txna Applications 0
+	app_params_get AppAddress
+	assert
+	acct_params_get AcctMinBalance
+	assert
+	frame_bury -2 // preMBR: uint64
+
+	// contracts/start.algo.ts:65
+	// this.inFavor(this.txn.sender).delete()
+	txn Sender
+	box_del
+
+	// contracts/start.algo.ts:67
+	// sendPayment({
+	//         amount: preMBR - this.app.address.minBalance,
+	//         receiver: this.txn.sender,
+	//       })
+	itxn_begin
+	int pay
+	itxn_field TypeEnum
+
+	// contracts/start.algo.ts:68
+	// amount: preMBR - this.app.address.minBalance
+	frame_dig -2 // preMBR: uint64
+	txna Applications 0
+	app_params_get AppAddress
+	assert
+	acct_params_get AcctMinBalance
+	assert
+	-
+	itxn_field Amount
+
+	// contracts/start.algo.ts:69
+	// receiver: this.txn.sender
+	txn Sender
+	itxn_field Receiver
+
+	// Fee field not set, defaulting to 0
+	int 0
+	itxn_field Fee
+
+	// Submit inner transaction
+	itxn_submit
+
+if0_end:
+	// contracts/start.algo.ts:73
+	// sendAssetTransfer({
+	//       xferAsset: this.registeredAsaId.value,
+	//       assetSender: this.txn.sender,
+	//       assetReceiver: this.app.address,
+	//       assetAmount: 1,
+	//     })
+	itxn_begin
+	int axfer
+	itxn_field TypeEnum
+
+	// contracts/start.algo.ts:74
+	// xferAsset: this.registeredAsaId.value
 	byte "registeredAsaId"
 	app_global_get
-	itob
-	byte 0x151f7c75
-	swap
-	concat
-	log
+	itxn_field XferAsset
+
+	// contracts/start.algo.ts:75
+	// assetSender: this.txn.sender
+	txn Sender
+	itxn_field AssetSender
+
+	// contracts/start.algo.ts:76
+	// assetReceiver: this.app.address
+	txna Applications 0
+	app_params_get AppAddress
+	assert
+	itxn_field AssetReceiver
+
+	// contracts/start.algo.ts:77
+	// assetAmount: 1
+	int 1
+	itxn_field AssetAmount
+
+	// Fee field not set, defaulting to 0
+	int 0
+	itxn_field Fee
+
+	// Submit inner transaction
+	itxn_submit
 	retsub
 
 // vote(asset,bool,pay)void
@@ -286,7 +413,7 @@ abi_route_vote:
 vote:
 	proto 4 0
 
-	// contracts/start.algo.ts:61
+	// contracts/start.algo.ts:84
 	// assert(this.txn.sender.assetBalance(this.registeredAsaId.value) === 1)
 	txn Sender
 	byte "registeredAsaId"
@@ -297,7 +424,7 @@ vote:
 	==
 	assert
 
-	// contracts/start.algo.ts:62
+	// contracts/start.algo.ts:85
 	// assert(!this.inFavor(this.txn.sender).exists)
 	txn Sender
 	box_len
@@ -306,7 +433,16 @@ vote:
 	!
 	assert
 
-	// contracts/start.algo.ts:63
+	// contracts/start.algo.ts:86
+	// preBoxMBR = this.app.address.minBalance
+	txna Applications 0
+	app_params_get AppAddress
+	assert
+	acct_params_get AcctMinBalance
+	assert
+	frame_bury -4 // preBoxMBR: uint64
+
+	// contracts/start.algo.ts:87
 	// this.inFavor(this.txn.sender).value = inFavor
 	txn Sender
 	frame_dig -2 // inFavor: bool
@@ -316,16 +452,7 @@ vote:
 	setbit
 	box_put
 
-	// contracts/start.algo.ts:65
-	// preBoxMBR = this.app.address.minBalance
-	txna Applications 0
-	app_params_get AppAddress
-	assert
-	acct_params_get AcctMinBalance
-	assert
-	frame_bury -4 // preBoxMBR: uint64
-
-	// contracts/start.algo.ts:67
+	// contracts/start.algo.ts:89
 	// verifyTxn(boxMBRPayment, {
 	//       receiver: this.app.address, // Payment receiver
 	//       amount: this.app.address.minBalance - preBoxMBR, // Subtract whatever the current
@@ -353,7 +480,7 @@ vote:
 	==
 	assert
 
-	// contracts/start.algo.ts:73
+	// contracts/start.algo.ts:95
 	// this.votesTotal.value = this.votesTotal.value + 1
 	byte "votesTotal"
 	byte "votesTotal"
@@ -362,14 +489,14 @@ vote:
 	+
 	app_global_put
 
-	// if0_condition
-	// contracts/start.algo.ts:75
+	// if2_condition
+	// contracts/start.algo.ts:97
 	// inFavor
 	frame_dig -2 // inFavor: bool
-	bz if0_end
+	bz if2_end
 
-	// if0_consequent
-	// contracts/start.algo.ts:76
+	// if2_consequent
+	// contracts/start.algo.ts:98
 	// this.votesInFavor.value = this.votesInFavor.value + 1
 	byte "votesInFavor"
 	byte "votesInFavor"
@@ -378,155 +505,28 @@ vote:
 	+
 	app_global_put
 
-if0_end:
+if2_end:
 	retsub
 
-// deregister(asset)void
-//
-// // eslint-disable-next-line no-unused-vars
-abi_route_deregister:
-	byte 0x // push empty bytes to fill the stack frame for this subroutine's local variables
-
-	// registeredASA: asset
-	txna ApplicationArgs 1
-	btoi
-	txnas Assets
-
-	// execute deregister(asset)void
-	callsub deregister
+// getRegisteredASA()uint64
+abi_route_getRegisteredASA:
+	// execute getRegisteredASA()uint64
+	callsub getRegisteredASA
 	int 1
 	return
 
-deregister:
-	proto 2 0
+getRegisteredASA:
+	proto 0 0
 
-	// if1_condition
-	// contracts/start.algo.ts:83
-	// this.inFavor(this.txn.sender).exists
-	txn Sender
-	box_len
-	swap
-	pop
-	bz if1_end
-
-	// if1_consequent
-	// contracts/start.algo.ts:84
-	// this.votesTotal.value = this.votesTotal.value - 1
-	byte "votesTotal"
-	byte "votesTotal"
-	app_global_get
-	int 1
-	-
-	app_global_put
-
-	// if2_condition
-	// contracts/start.algo.ts:85
-	// this.inFavor(this.txn.sender).value
-	txn Sender
-	box_get
-	assert
-	int 0
-	getbit
-	bz if2_end
-
-	// if2_consequent
-	// contracts/start.algo.ts:86
-	// this.votesInFavor.value = this.votesInFavor.value - 1
-	byte "votesInFavor"
-	byte "votesInFavor"
-	app_global_get
-	int 1
-	-
-	app_global_put
-
-if2_end:
-	// contracts/start.algo.ts:89
-	// preMBR = this.app.address.minBalance
-	txna Applications 0
-	app_params_get AppAddress
-	assert
-	acct_params_get AcctMinBalance
-	assert
-	frame_bury -2 // preMBR: uint64
-
-	// contracts/start.algo.ts:90
-	// this.inFavor(this.txn.sender).delete()
-	txn Sender
-	box_del
-
-	// contracts/start.algo.ts:92
-	// sendPayment({
-	//         amount: preMBR - this.app.address.minBalance,
-	//         receiver: this.txn.sender,
-	//       })
-	itxn_begin
-	int pay
-	itxn_field TypeEnum
-
-	// contracts/start.algo.ts:93
-	// amount: preMBR - this.app.address.minBalance
-	frame_dig -2 // preMBR: uint64
-	txna Applications 0
-	app_params_get AppAddress
-	assert
-	acct_params_get AcctMinBalance
-	assert
-	-
-	itxn_field Amount
-
-	// contracts/start.algo.ts:94
-	// receiver: this.txn.sender
-	txn Sender
-	itxn_field Receiver
-
-	// Fee field not set, defaulting to 0
-	int 0
-	itxn_field Fee
-
-	// Submit inner transaction
-	itxn_submit
-
-if1_end:
-	// contracts/start.algo.ts:98
-	// sendAssetTransfer({
-	//       xferAsset: this.registeredAsaId.value,
-	//       assetSender: this.txn.sender,
-	//       assetReceiver: this.app.address,
-	//       assetAmount: 1,
-	//     })
-	itxn_begin
-	int axfer
-	itxn_field TypeEnum
-
-	// contracts/start.algo.ts:99
-	// xferAsset: this.registeredAsaId.value
+	// contracts/start.algo.ts:103
+	// return this.registeredAsaId.value;
 	byte "registeredAsaId"
 	app_global_get
-	itxn_field XferAsset
-
-	// contracts/start.algo.ts:100
-	// assetSender: this.txn.sender
-	txn Sender
-	itxn_field AssetSender
-
-	// contracts/start.algo.ts:101
-	// assetReceiver: this.app.address
-	txna Applications 0
-	app_params_get AppAddress
-	assert
-	itxn_field AssetReceiver
-
-	// contracts/start.algo.ts:102
-	// assetAmount: 1
-	int 1
-	itxn_field AssetAmount
-
-	// Fee field not set, defaulting to 0
-	int 0
-	itxn_field Fee
-
-	// Submit inner transaction
-	itxn_submit
+	itob
+	byte 0x151f7c75
+	swap
+	concat
+	log
 	retsub
 
 // getProposal()string
@@ -596,13 +596,13 @@ create_NoOp:
 call_NoOp:
 	method "bootstrap()uint64"
 	method "register(asset)void"
-	method "getRegisteredASA()uint64"
-	method "vote(pay,bool,asset)void"
 	method "deregister(asset)void"
+	method "vote(pay,bool,asset)void"
+	method "getRegisteredASA()uint64"
 	method "getProposal()string"
 	method "getVotes()(uint64,uint64)"
 	txna ApplicationArgs 0
-	match abi_route_bootstrap abi_route_register abi_route_getRegisteredASA abi_route_vote abi_route_deregister abi_route_getProposal abi_route_getVotes
+	match abi_route_bootstrap abi_route_register abi_route_deregister abi_route_vote abi_route_getRegisteredASA abi_route_getProposal abi_route_getVotes
 	err
 
 process_static_tuple_element:

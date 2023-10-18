@@ -14,7 +14,7 @@ import * as algokit from "@algorandfoundation/algokit-utils"
   registeredASA={registeredASA}
 />
 */
-type StartRegisterArgs = Start['methods']['optInToApplication(asset)void']['argsObj']
+type StartRegisterArgs = Start['methods']['register(asset)void']['argsObj']
 
 type Props = {
   buttonClass: string
@@ -36,17 +36,17 @@ const StartRegister = (props: Props) => {
     setLoading(true)
     console.log(`Calling optInToApplication`)
     const registerAsOptInTnx = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
-         from: sender.addr,
-         to: sender.addr,
-         amount: 0,
-         suggestedParams: await algokit.getTransactionParams(undefined, props.algodClient),
-         assetIndex: Number(props.registeredASA),
+        from: sender.addr,
+        to: sender.addr,
+        amount: 0,
+        suggestedParams: await algokit.getTransactionParams(undefined, props.algodClient),
+        assetIndex: Number(props.registeredASA),
 
-       })
+      })
 
-       await algokit.sendTransaction({ transaction: registerAsOptInTnx, from: sender }, props.algodClient)
+      await algokit.sendTransaction({ transaction: registerAsOptInTnx, from: sender }, props.algodClient)
 
-    await props.typedClient.optIn.optInToApplication(
+    await props.typedClient.register(
       {
         registeredASA: props.registeredASA,
       },

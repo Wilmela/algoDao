@@ -14,32 +14,36 @@ import * as algokit from "@algorandfoundation/algokit-utils"
   registeredASA={registeredASA}
 />
 */
-type StartCloseOutOfApplicationArgs = Start['methods']['closeOutOfApplication(asset)void']['argsObj']
+type StartDeregisterArgs = Start['methods']['deregister(asset)void']['argsObj']
 
 type Props = {
   buttonClass: string
   buttonLoadingNode?: ReactNode
   buttonNode: ReactNode
   typedClient: StartClient
-  registeredASA: StartCloseOutOfApplicationArgs['registeredASA']
+  registeredASA: StartDeregisterArgs['registeredASA']
   algodClient: algosdk.Algodv2
   getState: () => Promise<void>
 }
 
-const StartCloseOutOfApplication = (props: Props) => {
+const StartDeregister = (props: Props) => {
   const [loading, setLoading] = useState<boolean>(false)
   const { activeAddress, signer } = useWallet()
   const sender = { signer, addr: activeAddress! }
 
   const callMethod = async () => {
     setLoading(true)
-    console.log(`Calling closeOutOfApplication`)
+    console.log(`Calling Deregister`)
 
-    await props.typedClient.closeOut.closeOutOfApplication(
+    await props.typedClient.deregister(
       {
         registeredASA: props.registeredASA,
       },
-      { sender, sendParams: { fee: algokit.microAlgos(3_000) } },
+      {
+        sender,
+        boxes: [algosdk.decodeAddress(sender.addr).publicKey],
+        sendParams: { fee: algokit.microAlgos(3_000) }
+      },
     )
 
     const { appAddress } = await props.typedClient.appClient.getAppReference();
@@ -55,7 +59,7 @@ const StartCloseOutOfApplication = (props: Props) => {
 
     await algokit.sendTransaction({ transaction: registerCloseTnx, from: sender }, props.algodClient)
 
-   
+
     await props.getState()
     setLoading(false)
   }
@@ -67,4 +71,4 @@ const StartCloseOutOfApplication = (props: Props) => {
   )
 }
 
-export default StartCloseOutOfApplication
+export default StartDeregister

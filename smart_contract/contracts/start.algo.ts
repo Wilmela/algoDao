@@ -51,32 +51,7 @@ class Start extends Contract {
     });
   }
 
-  getRegisteredASA(): Asset {
-    return this.registeredAsaId.value;
-  }
-
-  // eslint-disable-next-line no-unused-vars
-  vote(boxMBRPayment: PayTxn, inFavor: boolean, registeredASA: Asset): void {
-    // Ensure the caller (msg.sender) has an asset
-    assert(this.txn.sender.assetBalance(this.registeredAsaId.value) === 1);
-    assert(!this.inFavor(this.txn.sender).exists);
-    this.inFavor(this.txn.sender).value = inFavor;
-
-    const preBoxMBR = this.app.address.minBalance; // Get initial MBR for creating a Box
-
-    verifyTxn(boxMBRPayment, {
-      receiver: this.app.address, // Payment receiver
-      amount: this.app.address.minBalance - preBoxMBR, // Subtract whatever the current
-      // MBR amount is from the previous
-    });
-
-    this.votesTotal.value = this.votesTotal.value + 1;
-
-    if (inFavor) {
-      this.votesInFavor.value = this.votesInFavor.value + 1;
-    }
-  }
-
+  // This function is made up of one outerTnx caller and 2 innerTnx call
   // @allow.call('CloseOut')
   // eslint-disable-next-line no-unused-vars
   deregister(registeredASA: Asset): void {
@@ -101,6 +76,31 @@ class Start extends Contract {
       assetReceiver: this.app.address,
       assetAmount: 1,
     });
+  }
+
+  // eslint-disable-next-line no-unused-vars
+  vote(boxMBRPayment: PayTxn, inFavor: boolean, registeredASA: Asset): void {
+    // Ensure the caller (msg.sender) has an asset
+    assert(this.txn.sender.assetBalance(this.registeredAsaId.value) === 1);
+    assert(!this.inFavor(this.txn.sender).exists);
+    const preBoxMBR = this.app.address.minBalance; // Get initial MBR for creating a Box
+    this.inFavor(this.txn.sender).value = inFavor;
+
+    verifyTxn(boxMBRPayment, {
+      receiver: this.app.address, // Payment receiver
+      amount: this.app.address.minBalance - preBoxMBR, // Subtract whatever the current
+      // MBR amount is from the previous
+    });
+
+    this.votesTotal.value = this.votesTotal.value + 1;
+
+    if (inFavor) {
+      this.votesInFavor.value = this.votesInFavor.value + 1;
+    }
+  }
+
+  getRegisteredASA(): Asset {
+    return this.registeredAsaId.value;
   }
 
   getProposal(): string {

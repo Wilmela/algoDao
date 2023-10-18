@@ -12,7 +12,7 @@ import { StartClient } from './contracts/StartClient'
 import * as algokit from '@algorandfoundation/algokit-utils'
 import StartRegister from './components/StartRegister'
 import StartVote from './components/StartVote'
-import StartCloseOutOfApplication from './components/StartCloseOutOfApplication'
+import StartCloseOutOfApplication from './components/StartDeregister'
 
 let providersArray: ProvidersArray
 if (import.meta.env.VITE_ALGOD_NETWORK === '') {
@@ -108,8 +108,9 @@ export default function App() {
 
     try {
         // Check local state if user has voted.
-        const localState = await typedClient.getLocalState(activeAddress!);
-        setHasVoted(localState.inFavor !== undefined)
+        const inFavor = await typedClient.appClient
+        .getBoxValue( algosdk.decodeAddress(activeAddress!).publicKey);
+        setHasVoted(inFavor !== undefined)
       } catch (error) {
         console.log(error)
         setHasVoted(false);
@@ -199,6 +200,7 @@ export default function App() {
                       inFavor={false}
                       registeredASA={registeredASA}
                       getState={getState}
+                      algodClient={algodClient}
                     />
 
                     <StartVote
@@ -209,6 +211,7 @@ export default function App() {
                       inFavor={true}
                       registeredASA={registeredASA}
                       getState={getState}
+                      algodClient={algodClient}
                     />
                   </div>
                 )}

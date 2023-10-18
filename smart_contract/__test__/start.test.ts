@@ -51,7 +51,12 @@ describe('Start', () => {
       algod,
     );
 
-    await register();
+    await appClient.register({ registeredASA }, {
+      sender,
+      sendParams: {
+        fee: microAlgos(3_000),
+      },
+    });
   };
 
   beforeEach(fixture.beforeEach);
@@ -121,7 +126,7 @@ describe('Start', () => {
   });
 
   test('vote (Negative)', async () => {
-    await expect(vote(true)).rejects.toThrow();
+    await expect(vote).rejects.toThrow();
   });
 
   test('register', async () => {
@@ -144,12 +149,7 @@ describe('Start', () => {
   });
 
   test('vote & getVotes', async () => {
-    try {
-      await vote(true);
-    } catch (e) {
-      console.warn(e);
-      throw e;
-    }
+    await vote(true);
 
     const votesAfter = await appClient.getVotes({});
     expect(votesAfter.return?.valueOf()).toEqual([BigInt(1), BigInt(1)]);
@@ -165,7 +165,7 @@ describe('Start', () => {
       { registeredASA },
       {
         sender,
-        sendParams: { fee: algokit.microAlgos(3_000) },
+        sendParams: { fee: microAlgos(3_000) },
         boxes: [algosdk.decodeAddress(sender.addr).publicKey],
       },
     );
